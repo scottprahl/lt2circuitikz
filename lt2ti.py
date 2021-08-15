@@ -485,7 +485,8 @@ class lt2circuiTikz:
         
         self.linecnt = 0;
         try :
-            fhs = open(fileandpath, mode='r', newline=None);
+            fhs = open(fileandpath, encoding="latin-1", mode='r', newline=None);
+
         except Exception as e:
             print('could not open ASC file "'+fileandpath+'" (cwd="'+os.curdir+'")');
             return None;
