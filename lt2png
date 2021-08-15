@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+#
+
+# import modules used here -- sys is a very standard one
+import os.path
+import sys
+import argparse
+import logging
+import subprocess
+
+LT2TEX = '/Users/prahl/Documents/Code/git/lt2circuitikz/lt2ti.py'
+
+# Gather our code in a main() function
+def main(args, loglevel):
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
+
+    logging.info("LTspice filename: %s" % args.filename)
+    file, file_extension = os.path.splitext(args.filename)
+
+    if file_extension != '.asc' and file_extension != '.ASC':
+        logging.info("Filename must be a LTspice .asc file")
+        return
+
+    ltlog_file = file + ".ltlog"
+    tex_file = args.filename + ".tex"
+    aux_file = args.filename + ".aux"
+    log_file = args.filename + ".log"
+    pdf_file = args.filename + ".pdf"
+    png_file = file + ".png"
+    
+    lt_cmd = 'python3 "' + LT2TEX + '" "' + args.filename + '" > "' + ltlog_file + '"'
+    logging.debug('**********************')
+    logging.debug(lt_cmd)
+    p=subprocess.run(['rm -f "%s"' % tex_file], shell=True)
+    p=subprocess.run(['rm -f "%s"' % aux_file], shell=True)
+    p=subprocess.run(['rm -f "%s"' % log_file], shell=True)
+    p=subprocess.run([lt_cmd], shell=True)
+    
+    if not os.path.isfile(tex_file):
+        logging.info("lt2ti.py failed to convert .asc to .tex file")
+        logging.info("asc file: %s" % args.filename)
+        logging.info("examine this file for clues: %s" % ltlog_file)
+        return
+    
+    p=subprocess.run(['rm -f "%s"' % ltlog_file], shell=True)
+
+    latex_cmd = 'xelatex -interaction=batchmode "' + tex_file + '"'
+    logging.debug('**********************')
+    logging.debug(latex_cmd)
+    p=subprocess.run(['rm -f "%s"' % pdf_file], shell=True)
+    p=subprocess.run([latex_cmd], shell=True)
+    
+    if not os.path.isfile(pdf_file):
+        logging.info("pdflatex failed to convert .tex to .pdf file")
+        logging.info("tex file: %s" % tex_file)
+        return
+
+    p=subprocess.run(['rm -f "%s"' % tex_file], shell=True)
+    p=subprocess.run(['rm -f "%s"' % aux_file], shell=True)
+    p=subprocess.run(['rm -f "%s"' % log_file], shell=True)
+
+    png_cmd = 'pdftoppm -png -r 300 "'+ pdf_file + '" > "' + png_file + '"'
+    logging.debug('**********************')
+    logging.debug(png_cmd)
+    p=subprocess.run(['rm -f "%s"' % png_file], shell=True)
+    p=subprocess.run([png_cmd], shell=True)
+    
+    if not os.path.isfile(png_file):
+        logging.info("pdftoppm failed to convert .pdf to .png file")
+        logging.info("pdf file: %s" % pdf_file)
+        return
+        
+    logging.info("successfully created PNG: %s" % png_file)
+    
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser( 
+                                    description = "Converts LTspice asc to png.",
+                                    epilog = "As an alternative to the commandline, params can be placed in a file, one per line, and specified on the commandline like '%(prog)s @params.conf'.",
+                                    fromfile_prefix_chars = '@' )
+
+    parser.add_argument(
+                      "filename",
+                      help = "pass filename to the program",
+                      metavar = "FILENAME")
+
+    parser.add_argument(
+                      "-v",
+                      "--verbose",
+                      help="increase output verbosity",
+                      action="store_true")
+
+    args = parser.parse_args()
+
+    # Setup logging
+    if args.verbose:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+
+    main(args, loglevel)
